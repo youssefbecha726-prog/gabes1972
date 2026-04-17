@@ -72,6 +72,80 @@ pm10 = air["current"]["pm10"]
 co = air["current"]["carbon_monoxide"]
 no2 = air["current"]["nitrogen_dioxide"]
 
+
+# 📊 جدول احترافي
+st.markdown("""
+<style>
+.custom-table {
+    width:100%;
+    border-collapse:collapse;
+    font-size:22px;
+}
+.custom-table th, .custom-table td {
+    padding:10px;
+    border-bottom:1px solid #333;
+}
+.ar {
+    text-align:right;
+    font-weight:bold;
+}
+.val {
+    text-align:center;
+}
+.fr {
+    text-align:left;
+    color:#9ca3af;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown(f"""
+<table class="custom-table">
+<tr>
+<th class="ar">العنصر</th>
+<th class="val">القيمة</th>
+<th class="fr">Français</th>
+</tr>
+
+<tr>
+<td class="ar">الحرارة</td>
+<td class="val">{temp} °C</td>
+<td class="fr">Température</td>
+</tr>
+
+<tr>
+<td class="ar">الرطوبة</td>
+<td class="val">{hum} %</td>
+<td class="fr">Humidité</td>
+</tr>
+
+<tr>
+<td class="ar">PM2.5</td>
+<td class="val">{pm25}</td>
+<td class="fr">PM2.5</td>
+</tr>
+
+<tr>
+<td class="ar">PM10</td>
+<td class="val">{pm10}</td>
+<td class="fr">PM10</td>
+</tr>
+
+<tr>
+<td class="ar">CO</td>
+<td class="val">{co}</td>
+<td class="fr">CO</td>
+</tr>
+
+<tr>
+<td class="ar">NO2</td>
+<td class="val">{no2}</td>
+<td class="fr">NO2</td>
+</tr>
+
+</table>
+""", unsafe_allow_html=True)
+
 # --------------------
 # 📊 عرض بالطول (عربي + فرنسي)
 # --------------------
