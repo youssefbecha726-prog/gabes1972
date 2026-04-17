@@ -2,7 +2,6 @@ streamlit
 pandas
 plotly
 requests
-numpy
+reportlab
 scikit-learn
-folium
-streamlit-folium
+matplotlib
