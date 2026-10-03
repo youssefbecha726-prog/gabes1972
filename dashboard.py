@@ -2,18 +2,14 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
-import folium
-
-from streamlit_folium import st_folium
+import plotly.express as px
+import requests
 from datetime import datetime
-from urllib.request import urlopen
-from urllib.parse import urlencode
-import json
-
+import folium
+from streamlit_folium import st_folium
 
 # ============================================================
-# PAGE CONFIG
+# ECO SMART GABES
 # ============================================================
 
 st.set_page_config(
@@ -23,566 +19,276 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-
 # ============================================================
-# GABÈS LOCATION
+# LOCATION
 # ============================================================
 
 LATITUDE = 33.8815
 LONGITUDE = 10.0982
-LOCATION_NAME = "Gabès, Tunisia"
-
-
-# ============================================================
-# SESSION STATE
-# ============================================================
-
-if "language" not in st.session_state:
-    st.session_state.language = "العربية"
-
 
 # ============================================================
 # TRANSLATIONS
 # ============================================================
 
-TEXT = {
-
+translations = {
     "العربية": {
-
-        "app": "EcoSmart Gabès",
-        "subtitle": "منصة ذكية للمراقبة والتحليل البيئي",
-        "location": "قابس، تونس",
-
-        "translate": "🌐 تغيير اللغة",
-        "language": "اللغة",
-
-        "overview": "🏠 الرئيسية",
-        "map": "🗺️ الخريطة",
-        "analytics": "📊 التحليلات",
-        "prediction": "🤖 التنبؤ",
-        "about": "ℹ️ حول المشروع",
-
-        "environment": "الوضع البيئي الحالي",
-
+        "home": "الرئيسية",
+        "air": "جودة الهواء",
+        "analytics": "التحليلات",
+        "map": "الخريطة",
+        "prediction": "التوقعات",
+        "about": "حول المشروع",
+        "title": "EcoSmart قابس",
+        "subtitle": "منصة ذكية لمراقبة البيئة وجودة الهواء في قابس",
         "aqi": "مؤشر جودة الهواء",
-        "pm25": "PM2.5",
-        "pm10": "PM10",
-        "co2": "CO₂",
+        "pm25": "الجسيمات PM2.5",
+        "pm10": "الجسيمات PM10",
         "temperature": "درجة الحرارة",
         "humidity": "الرطوبة",
         "wind": "سرعة الرياح",
-        "no2": "NO₂",
-        "so2": "SO₂",
-        "o3": "O₃",
-
-        "trends": "الاتجاهات البيئية",
-        "air_quality": "جودة الهواء",
-        "weather": "الطقس",
-
-        "map_title": "الخريطة البيئية لقابس",
-        "map_description": "موقع قابس ومناطق المراقبة البيئية.",
-
+        "co2": "ثاني أكسيد الكربون",
+        "no2": "ثاني أكسيد النيتروجين",
+        "so2": "ثاني أكسيد الكبريت",
+        "o3": "الأوزون",
+        "real_data": "بيانات حقيقية",
+        "last_update": "آخر تحديث",
+        "trend": "التغير خلال الساعات الأخيرة",
+        "select": "اختر المؤشر",
+        "forecast": "توقعات مؤشر جودة الهواء",
+        "source": "مصدر البيانات",
+        "about_text": "EcoSmart Gabès هو مشروع يهدف إلى استعمال البيانات والذكاء الاصطناعي لمتابعة البيئة في قابس.",
+        "model_note": "بيانات جودة الهواء تعتمد على نماذج CAMS وليست قياسات مباشرة من حساسات داخل قابس.",
         "industrial": "المنطقة الصناعية",
-        "coastal": "المنطقة الساحلية",
-        "center": "مركز EcoSmart",
-
-        "analytics_title": "تحليل البيانات الحقيقية",
-        "choose": "اختر المؤشر",
-        "last_hours": "الساعات الأخيرة",
+        "coast": "المنطقة الساحلية",
+        "center": "وسط قابس",
         "average": "المتوسط",
         "maximum": "الأقصى",
         "minimum": "الأدنى",
-
-        "prediction_title": "التنبؤ البيئي",
-        "prediction_description":
-            "توقع اتجاه مؤشر جودة الهواء اعتمادًا على البيانات المتوفرة.",
-        "prediction_days": "عدد أيام التنبؤ",
-        "historical": "البيانات الحالية",
-        "forecast": "التوقع",
-
-        "about_title": "حول EcoSmart Gabès",
-
-        "about_text":
-            "EcoSmart Gabès هو مشروع يهدف إلى استعمال البيانات البيئية "
-            "والذكاء الاصطناعي لمراقبة البيئة في قابس.",
-
-        "sources": "مصدر البيانات",
-        "source_text":
-            "بيانات الطقس وجودة الهواء يتم جلبها من Open-Meteo. "
-            "بيانات جودة الهواء تعتمد على نماذج CAMS وليست قياسات مباشرة "
-            "من حساس موجود داخل قابس.",
-
-        "objectives": "أهداف المشروع",
-
-        "objective1": "🌫️ مراقبة جودة الهواء",
-        "objective2": "🌡️ مراقبة الطقس",
-        "objective3": "📊 تحليل البيانات",
-        "objective4": "🗺️ عرض البيانات على الخريطة",
-        "objective5": "🤖 التنبؤ بالاتجاهات",
-        "objective6": "🌱 دعم الوعي البيئي",
-
-        "future": "التطوير المستقبلي",
-
-        "future_text":
-            "يمكن مستقبلاً ربط المشروع بحساسات IoT حقيقية، "
-            "وإضافة بيانات الأقمار الصناعية، ونماذج ذكاء اصطناعي "
-            "أكثر تطورًا.",
-
-        "loading": "جاري تحميل البيانات...",
-        "error": "تعذر الاتصال بمصدر البيانات.",
-        "retry": "حاول تحديث الصفحة.",
-
-        "good": "جيد",
-        "fair": "مقبول",
-        "moderate": "متوسط",
-        "poor": "ضعيف",
-        "very_poor": "ضعيف جدًا",
-        "extreme": "خطير جدًا",
-
-        "footer": "EcoSmart Gabès • Environmental Intelligence"
     },
 
-
     "Français": {
-
-        "app": "EcoSmart Gabès",
-        "subtitle": "Plateforme intelligente de surveillance environnementale",
-        "location": "Gabès, Tunisie",
-
-        "translate": "🌐 Changer la langue",
-        "language": "Langue",
-
-        "overview": "🏠 Accueil",
-        "map": "🗺️ Carte",
-        "analytics": "📊 Analyses",
-        "prediction": "🤖 Prédiction",
-        "about": "ℹ️ À propos",
-
-        "environment": "Situation environnementale actuelle",
-
+        "home": "Accueil",
+        "air": "Qualité de l'air",
+        "analytics": "Analyses",
+        "map": "Carte",
+        "prediction": "Prévisions",
+        "about": "À propos",
+        "title": "EcoSmart Gabès",
+        "subtitle": "Plateforme intelligente de surveillance environnementale à Gabès",
         "aqi": "Indice de qualité de l'air",
-        "pm25": "PM2.5",
-        "pm10": "PM10",
-        "co2": "CO₂",
+        "pm25": "Particules PM2.5",
+        "pm10": "Particules PM10",
         "temperature": "Température",
         "humidity": "Humidité",
-        "wind": "Vent",
-        "no2": "NO₂",
-        "so2": "SO₂",
-        "o3": "O₃",
-
-        "trends": "Tendances environnementales",
-        "air_quality": "Qualité de l'air",
-        "weather": "Météo",
-
-        "map_title": "Carte environnementale de Gabès",
-        "map_description":
-            "Localisation de Gabès et zones de surveillance.",
-
+        "wind": "Vitesse du vent",
+        "co2": "Dioxyde de carbone",
+        "no2": "Dioxyde d'azote",
+        "so2": "Dioxyde de soufre",
+        "o3": "Ozone",
+        "real_data": "Données réelles",
+        "last_update": "Dernière mise à jour",
+        "trend": "Évolution récente",
+        "select": "Choisir l'indicateur",
+        "forecast": "Prévision de la qualité de l'air",
+        "source": "Source des données",
+        "about_text": "EcoSmart Gabès est un projet utilisant les données et l'intelligence artificielle pour surveiller l'environnement à Gabès.",
+        "model_note": "Les données de qualité de l'air proviennent de modèles CAMS et non de capteurs locaux directs.",
         "industrial": "Zone industrielle",
-        "coastal": "Zone côtière",
-        "center": "Centre EcoSmart",
-
-        "analytics_title": "Analyse des données réelles",
-        "choose": "Choisir un indicateur",
-        "last_hours": "Dernières heures",
+        "coast": "Zone côtière",
+        "center": "Centre de Gabès",
         "average": "Moyenne",
         "maximum": "Maximum",
         "minimum": "Minimum",
-
-        "prediction_title": "Prédiction environnementale",
-        "prediction_description":
-            "Prévision de la tendance de la qualité de l'air "
-            "à partir des données disponibles.",
-
-        "prediction_days": "Nombre de jours",
-        "historical": "Données actuelles",
-        "forecast": "Prévision",
-
-        "about_title": "À propos d'EcoSmart Gabès",
-
-        "about_text":
-            "EcoSmart Gabès est un projet qui utilise les données "
-            "environnementales et l'intelligence artificielle "
-            "pour surveiller l'environnement à Gabès.",
-
-        "sources": "Source des données",
-
-        "source_text":
-            "Les données météo et qualité de l'air proviennent "
-            "d'Open-Meteo. Les données de qualité de l'air utilisent "
-            "des modèles CAMS et ne sont pas des mesures directes "
-            "effectuées par un capteur local à Gabès.",
-
-        "objectives": "Objectifs",
-
-        "objective1": "🌫️ Surveiller la qualité de l'air",
-        "objective2": "🌡️ Surveiller la météo",
-        "objective3": "📊 Analyser les données",
-        "objective4": "🗺️ Cartographier les données",
-        "objective5": "🤖 Prévoir les tendances",
-        "objective6": "🌱 Sensibiliser à l'environnement",
-
-        "future": "Développement futur",
-
-        "future_text":
-            "Le projet pourra être connecté à de vrais capteurs IoT, "
-            "aux données satellites et à des modèles d'intelligence "
-            "artificielle plus avancés.",
-
-        "loading": "Chargement des données...",
-        "error": "Impossible de récupérer les données.",
-        "retry": "Essayez de rafraîchir la page.",
-
-        "good": "Bon",
-        "fair": "Acceptable",
-        "moderate": "Modéré",
-        "poor": "Mauvais",
-        "very_poor": "Très mauvais",
-        "extreme": "Extrêmement mauvais",
-
-        "footer": "EcoSmart Gabès • Environmental Intelligence"
     },
 
-
     "English": {
-
-        "app": "EcoSmart Gabès",
-        "subtitle": "Smart Environmental Monitoring & Intelligence",
-        "location": "Gabès, Tunisia",
-
-        "translate": "🌐 Change language",
-        "language": "Language",
-
-        "overview": "🏠 Overview",
-        "map": "🗺️ Map",
-        "analytics": "📊 Analytics",
-        "prediction": "🤖 Prediction",
-        "about": "ℹ️ About",
-
-        "environment": "Current Environmental Situation",
-
+        "home": "Home",
+        "air": "Air Quality",
+        "analytics": "Analytics",
+        "map": "Map",
+        "prediction": "Prediction",
+        "about": "About",
+        "title": "EcoSmart Gabès",
+        "subtitle": "Smart environmental monitoring platform for Gabès",
         "aqi": "Air Quality Index",
-        "pm25": "PM2.5",
-        "pm10": "PM10",
-        "co2": "CO₂",
+        "pm25": "PM2.5 Particles",
+        "pm10": "PM10 Particles",
         "temperature": "Temperature",
         "humidity": "Humidity",
         "wind": "Wind Speed",
-        "no2": "NO₂",
-        "so2": "SO₂",
-        "o3": "O₃",
-
-        "trends": "Environmental Trends",
-        "air_quality": "Air Quality",
-        "weather": "Weather",
-
-        "map_title": "Gabès Environmental Map",
-        "map_description":
-            "Gabès location and environmental monitoring zones.",
-
-        "industrial": "Industrial Zone",
-        "coastal": "Coastal Zone",
-        "center": "EcoSmart Center",
-
-        "analytics_title": "Real Data Analytics",
-        "choose": "Choose an indicator",
-        "last_hours": "Recent Hours",
+        "co2": "Carbon Dioxide",
+        "no2": "Nitrogen Dioxide",
+        "so2": "Sulfur Dioxide",
+        "o3": "Ozone",
+        "real_data": "Real data",
+        "last_update": "Last update",
+        "trend": "Recent trend",
+        "select": "Select indicator",
+        "forecast": "Air quality forecast",
+        "source": "Data source",
+        "about_text": "EcoSmart Gabès is a project using data and artificial intelligence to monitor the environment in Gabès.",
+        "model_note": "Air quality data comes from CAMS models and not from direct local sensors.",
+        "industrial": "Industrial zone",
+        "coast": "Coastal zone",
+        "center": "Gabès center",
         "average": "Average",
         "maximum": "Maximum",
         "minimum": "Minimum",
-
-        "prediction_title": "Environmental Prediction",
-        "prediction_description":
-            "Estimate air-quality trends using the available data.",
-
-        "prediction_days": "Prediction Days",
-        "historical": "Current Data",
-        "forecast": "Forecast",
-
-        "about_title": "About EcoSmart Gabès",
-
-        "about_text":
-            "EcoSmart Gabès is a project using environmental data "
-            "and artificial intelligence to monitor the environment "
-            "in Gabès.",
-
-        "sources": "Data Source",
-
-        "source_text":
-            "Weather and air-quality data are retrieved from "
-            "Open-Meteo. Air-quality data uses CAMS models and "
-            "does not represent direct measurements from a local "
-            "sensor in Gabès.",
-
-        "objectives": "Project Objectives",
-
-        "objective1": "🌫️ Monitor air quality",
-        "objective2": "🌡️ Monitor weather",
-        "objective3": "📊 Analyze data",
-        "objective4": "🗺️ Map environmental data",
-        "objective5": "🤖 Predict trends",
-        "objective6": "🌱 Promote environmental awareness",
-
-        "future": "Future Development",
-
-        "future_text":
-            "The project can later connect to real IoT sensors, "
-            "satellite data and more advanced AI models.",
-
-        "loading": "Loading data...",
-        "error": "Unable to retrieve data.",
-        "retry": "Try refreshing the page.",
-
-        "good": "Good",
-        "fair": "Fair",
-        "moderate": "Moderate",
-        "poor": "Poor",
-        "very_poor": "Very poor",
-        "extreme": "Extremely poor",
-
-        "footer": "EcoSmart Gabès • Environmental Intelligence"
     }
 }
 
-t = TEXT[st.session_state.language]
+# ============================================================
+# LANGUAGE
+# ============================================================
 
-rtl = st.session_state.language == "العربية"
+if "language" not in st.session_state:
+    st.session_state.language = "العربية"
 
+language = st.sidebar.selectbox(
+    "🌐 Language / اللغة / Langue",
+    ["العربية", "Français", "English"],
+    index=["العربية", "Français", "English"].index(
+        st.session_state.language
+    )
+)
+
+st.session_state.language = language
+t = translations[language]
 
 # ============================================================
 # CSS
 # ============================================================
 
 st.markdown(
-    f"""
-    <style>
+    """
+<style>
 
-    @import url(
-        'https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800'
-        '&family=Inter:wght@400;500;600;700;800&display=swap'
-    );
+@import url(
+'https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap'
+);
 
-    html, body, [class*="css"] {{
-        font-family:
-            {"Cairo, sans-serif" if rtl else "Inter, sans-serif"};
-    }}
+html, body, [class*="css"] {
+    font-family: 'Cairo', 'Inter', sans-serif;
+}
 
-    .stApp {{
-        background:
-            radial-gradient(
-                circle at 10% 10%,
-                rgba(16,185,129,0.16),
-                transparent 28%
-            ),
-            radial-gradient(
-                circle at 90% 20%,
-                rgba(37,99,235,0.18),
-                transparent 30%
-            ),
-            linear-gradient(
-                135deg,
-                #020617,
-                #071827,
-                #06121e
-            );
-    }}
+.stApp {
+    background:
+        radial-gradient(
+            circle at 10% 10%,
+            rgba(0, 180, 216, 0.16),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 90% 20%,
+            rgba(0, 255, 170, 0.10),
+            transparent 30%
+        ),
+        linear-gradient(
+            135deg,
+            #06111f 0%,
+            #0a1727 50%,
+            #07121f 100%
+        );
+}
 
-    [data-testid="stHeader"] {{
-        background: transparent;
-    }}
+.block-container {
+    max-width: 1450px;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+}
 
-    [data-testid="stSidebar"] {{
-        background: rgba(2,6,23,0.96);
-        border-right: 1px solid rgba(255,255,255,0.08);
-    }}
+[data-testid="stSidebar"] {
+    background: rgba(4, 12, 22, 0.97);
+}
 
-    [data-testid="stSidebar"] * {{
-        color: #e2e8f0 !important;
-    }}
+.hero {
+    padding: 38px;
+    border-radius: 28px;
+    margin-bottom: 28px;
 
-    .block-container {{
-        max-width: 1500px;
-        padding-top: 2rem;
-        padding-bottom: 3rem;
-    }}
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0, 200, 255, 0.13),
+            rgba(0, 255, 170, 0.06)
+        );
 
-    .hero {{
-        padding: 38px;
-        border-radius: 28px;
-        margin-bottom: 25px;
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
 
-        background:
-            linear-gradient(
-                135deg,
-                rgba(16,185,129,0.25),
-                rgba(37,99,235,0.22)
-            );
+.hero h1 {
+    font-size: 44px;
+    font-weight: 800;
+    margin: 0;
+}
 
-        border: 1px solid rgba(255,255,255,0.12);
+.hero p {
+    color: #aebdca;
+    font-size: 17px;
+    margin-top: 8px;
+}
 
-        box-shadow:
-            0 20px 70px rgba(0,0,0,0.35);
+.card {
+    background: rgba(255,255,255,0.055);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 22px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 15px 45px rgba(0,0,0,0.15);
+}
 
-        backdrop-filter: blur(20px);
-    }}
+.metric-card {
+    background: rgba(255,255,255,0.055);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 20px;
+    padding: 20px;
+    text-align: center;
+    min-height: 140px;
+}
 
-    .hero h1 {{
-        color: white;
-        font-size: 46px;
-        font-weight: 800;
-        margin: 0;
-    }}
+.metric-label {
+    color: #9eafbf;
+    font-size: 14px;
+}
 
-    .hero p {{
-        color: #cbd5e1;
-        font-size: 17px;
-        margin: 7px 0;
-    }}
+.metric-value {
+    font-size: 30px;
+    font-weight: 800;
+    margin-top: 10px;
+}
 
-    .section-title {{
-        color: white;
-        font-size: 27px;
-        font-weight: 800;
-        margin-top: 30px;
-        margin-bottom: 18px;
-    }}
+.metric-unit {
+    color: #7f91a2;
+    font-size: 12px;
+}
 
-    .metric-card {{
-        min-height: 150px;
-        padding: 22px;
-        border-radius: 22px;
+.footer {
+    text-align: center;
+    color: #718395;
+    margin-top: 40px;
+    padding: 25px;
+}
 
-        background: rgba(15,23,42,0.72);
-
-        border:
-            1px solid rgba(255,255,255,0.09);
-
-        box-shadow:
-            0 12px 40px rgba(0,0,0,0.22);
-
-        backdrop-filter: blur(18px);
-    }}
-
-    .metric-icon {{
-        font-size: 28px;
-    }}
-
-    .metric-title {{
-        color: #94a3b8;
-        font-size: 14px;
-        margin-top: 8px;
-    }}
-
-    .metric-value {{
-        color: white;
-        font-size: 29px;
-        font-weight: 800;
-        margin-top: 4px;
-    }}
-
-    .live {{
-        color: #5eead4;
-        font-size: 12px;
-        margin-top: 5px;
-    }}
-
-    .info-card {{
-        padding: 25px;
-        border-radius: 22px;
-
-        background: rgba(15,23,42,0.70);
-
-        border:
-            1px solid rgba(255,255,255,0.08);
-
-        color: #cbd5e1;
-
-        line-height: 1.8;
-
-        margin-bottom: 14px;
-    }}
-
-    .source {{
-        padding: 18px;
-        border-radius: 18px;
-
-        background: rgba(14,116,144,0.12);
-
-        border:
-            1px solid rgba(34,211,238,0.15);
-
-        color: #cbd5e1;
-    }}
-
-    .footer {{
-        text-align: center;
-        color: #64748b;
-        padding: 35px 10px 10px;
-        font-size: 13px;
-    }}
-
-    .stButton > button {{
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(15,23,42,0.8);
-        color: white;
-        font-weight: 700;
-        min-height: 45px;
-    }}
-
-    .stButton > button:hover {{
-        border-color: #2dd4bf;
-        color: #5eead4;
-    }}
-
-    </style>
-    """,
+</style>
+""",
     unsafe_allow_html=True
 )
 
-
 # ============================================================
-# LANGUAGE BUTTON
-# ============================================================
-
-language_order = [
-    "العربية",
-    "Français",
-    "English"
-]
-
-if st.button(
-    t["translate"],
-    use_container_width=False
-):
-
-    current_index = language_order.index(
-        st.session_state.language
-    )
-
-    next_index = (
-        current_index + 1
-    ) % len(language_order)
-
-    st.session_state.language = language_order[next_index]
-
-    st.rerun()
-
-
-# ============================================================
-# FETCH API
+# API
 # ============================================================
 
 @st.cache_data(ttl=900)
 def get_air_quality():
 
-    params = {
+    url = "https://air-quality-api.open-meteo.com/v1/air-quality"
 
+    params = {
         "latitude": LATITUDE,
         "longitude": LONGITUDE,
 
-        "current":
+        "current": (
             "european_aqi,"
             "pm10,"
             "pm2_5,"
@@ -590,9 +296,10 @@ def get_air_quality():
             "carbon_dioxide,"
             "nitrogen_dioxide,"
             "sulphur_dioxide,"
-            "ozone",
+            "ozone"
+        ),
 
-        "hourly":
+        "hourly": (
             "european_aqi,"
             "pm10,"
             "pm2_5,"
@@ -600,59 +307,60 @@ def get_air_quality():
             "carbon_dioxide,"
             "nitrogen_dioxide,"
             "sulphur_dioxide,"
-            "ozone",
+            "ozone"
+        ),
 
         "past_days": 2,
         "forecast_days": 3,
-
         "timezone": "auto"
     }
 
-    url = (
-        "https://air-quality-api.open-meteo.com/v1/air-quality?"
-        + urlencode(params)
+    response = requests.get(
+        url,
+        params=params,
+        timeout=30
     )
 
-    with urlopen(url, timeout=15) as response:
-        return json.loads(
-            response.read().decode("utf-8")
-        )
+    response.raise_for_status()
+
+    return response.json()
 
 
 @st.cache_data(ttl=900)
 def get_weather():
 
-    params = {
+    url = "https://api.open-meteo.com/v1/forecast"
 
+    params = {
         "latitude": LATITUDE,
         "longitude": LONGITUDE,
 
-        "current":
+        "current": (
             "temperature_2m,"
             "relative_humidity_2m,"
-            "wind_speed_10m,"
-            "weather_code",
+            "wind_speed_10m"
+        ),
 
-        "hourly":
+        "hourly": (
             "temperature_2m,"
             "relative_humidity_2m,"
-            "wind_speed_10m",
+            "wind_speed_10m"
+        ),
 
         "past_days": 2,
         "forecast_days": 3,
-
         "timezone": "auto"
     }
 
-    url = (
-        "https://api.open-meteo.com/v1/forecast?"
-        + urlencode(params)
+    response = requests.get(
+        url,
+        params=params,
+        timeout=30
     )
 
-    with urlopen(url, timeout=15) as response:
-        return json.loads(
-            response.read().decode("utf-8")
-        )
+    response.raise_for_status()
+
+    return response.json()
 
 
 # ============================================================
@@ -661,106 +369,28 @@ def get_weather():
 
 try:
 
-    air = get_air_quality()
-    weather = get_weather()
+    air_data = get_air_quality()
+    weather_data = get_weather()
 
-    api_error = False
+except Exception as error:
 
-except Exception as e:
+    st.error("❌ Unable to load environmental data.")
+    st.code(str(error))
 
-    air = None
-    weather = None
-    api_error = True
-
-
-# ============================================================
-# SIDEBAR
-# ============================================================
-
-st.sidebar.markdown(
-    """
-    <div style="text-align:center;padding:10px;">
-        <div style="font-size:48px;">🌍</div>
-        <h2>EcoSmart</h2>
-        <p style="color:#64748b;">Gabès</p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-st.sidebar.markdown("---")
-
-st.sidebar.write(
-    f"**{t['language']}**"
-)
-
-st.sidebar.write(
-    f"🌐 {st.session_state.language}"
-)
-
-st.sidebar.markdown("---")
-
-pages = [
-    t["overview"],
-    t["map"],
-    t["analytics"],
-    t["prediction"],
-    t["about"]
-]
-
-page = st.sidebar.radio(
-    t["language"],
-    pages,
-    label_visibility="collapsed"
-)
-
-st.sidebar.markdown("---")
-
-st.sidebar.caption(
-    "📡 Open-Meteo • CAMS • Gabès"
-)
-
-
-# ============================================================
-# HERO
-# ============================================================
-
-st.markdown(
-    f"""
-    <div class="hero"
-         dir="{'rtl' if rtl else 'ltr'}">
-
-        <h1>🌍 {t["app"]}</h1>
-
-        <p>{t["subtitle"]}</p>
-
-        <p>📍 {t["location"]}</p>
-
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-
-# ============================================================
-# API ERROR
-# ============================================================
-
-if api_error:
-
-    st.error(
-        f"⚠️ {t['error']} {t['retry']}"
+    st.info(
+        "Please refresh the page. If the problem continues, "
+        "check the Streamlit Cloud logs."
     )
 
     st.stop()
 
 
 # ============================================================
-# CURRENT VALUES
+# CURRENT DATA
 # ============================================================
 
-air_current = air.get("current", {})
-weather_current = weather.get("current", {})
+air_current = air_data.get("current", {})
+weather_current = weather_data.get("current", {})
 
 aqi = air_current.get("european_aqi")
 pm25 = air_current.get("pm2_5")
@@ -770,222 +400,178 @@ no2 = air_current.get("nitrogen_dioxide")
 so2 = air_current.get("sulphur_dioxide")
 o3 = air_current.get("ozone")
 
-temperature = weather_current.get(
-    "temperature_2m"
-)
+temperature = weather_current.get("temperature_2m")
+humidity = weather_current.get("relative_humidity_2m")
+wind = weather_current.get("wind_speed_10m")
 
-humidity = weather_current.get(
-    "relative_humidity_2m"
-)
 
-wind = weather_current.get(
-    "wind_speed_10m"
+# ============================================================
+# HERO
+# ============================================================
+
+st.markdown(
+    f"""
+<div class="hero">
+
+<h1>🌍 {t["title"]}</h1>
+
+<p>
+{t["subtitle"]}
+</p>
+
+</div>
+""",
+    unsafe_allow_html=True
 )
 
 
 # ============================================================
-# OVERVIEW
+# SIDEBAR
 # ============================================================
 
-if page == t["overview"]:
+st.sidebar.markdown("## 🌍 EcoSmart Gabès")
 
-    st.markdown(
-        f"""
-        <div class="section-title">
-            {t["environment"]}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+page = st.sidebar.radio(
+    "Navigation",
+    [
+        t["home"],
+        t["air"],
+        t["analytics"],
+        t["map"],
+        t["prediction"],
+        t["about"]
+    ]
+)
+
+st.sidebar.markdown("---")
+
+st.sidebar.info(
+    f"{t['source']}: Open-Meteo / CAMS"
+)
+
+
+# ============================================================
+# HOME
+# ============================================================
+
+if page == t["home"]:
+
+    st.subheader("📊 " + t["home"])
 
     cols = st.columns(4)
 
-    metrics = [
-
-        (
-            "🌍",
-            t["aqi"],
-            aqi,
-            ""
-        ),
-
-        (
-            "🌫️",
-            t["pm25"],
-            pm25,
-            " μg/m³"
-        ),
-
-        (
-            "🌡️",
-            t["temperature"],
-            temperature,
-            " °C"
-        ),
-
-        (
-            "💧",
-            t["humidity"],
-            humidity,
-            "%"
-        )
+    values = [
+        (t["aqi"], aqi, ""),
+        (t["pm25"], pm25, "µg/m³"),
+        (t["temperature"], temperature, "°C"),
+        (t["humidity"], humidity, "%")
     ]
 
-    for col, item in zip(cols, metrics):
-
-        icon, title, value, unit = item
+    for col, (label, value, unit) in zip(cols, values):
 
         with col:
 
-            value_text = (
-                "—"
-                if value is None
-                else f"{value:.1f}{unit}"
-            )
+            if value is None:
+                display_value = "N/A"
+            else:
+                display_value = f"{value:.1f}"
 
             st.markdown(
                 f"""
                 <div class="metric-card">
 
-                    <div class="metric-icon">
-                        {icon}
-                    </div>
+                <div class="metric-label">
+                {label}
+                </div>
 
-                    <div class="metric-title">
-                        {title}
-                    </div>
+                <div class="metric-value">
+                {display_value}
+                </div>
 
-                    <div class="metric-value">
-                        {value_text}
-                    </div>
-
-                    <div class="live">
-                        ● Live data
-                    </div>
+                <div class="metric-unit">
+                {unit}
+                </div>
 
                 </div>
                 """,
                 unsafe_allow_html=True
             )
 
-    # Second row
-
-    st.markdown(
-        '<div style="height:15px;"></div>',
-        unsafe_allow_html=True
-    )
+    st.write("")
 
     cols = st.columns(4)
 
-    metrics2 = [
-
-        (
-            "🌫️",
-            t["pm10"],
-            pm10,
-            " μg/m³"
-        ),
-
-        (
-            "🫧",
-            t["co2"],
-            co2,
-            " ppm"
-        ),
-
-        (
-            "💨",
-            t["wind"],
-            wind,
-            " km/h"
-        ),
-
-        (
-            "🧪",
-            t["no2"],
-            no2,
-            " μg/m³"
-        )
+    values = [
+        (t["pm10"], pm10, "µg/m³"),
+        (t["co2"], co2, "µg/m³"),
+        (t["no2"], no2, "µg/m³"),
+        (t["wind"], wind, "km/h")
     ]
 
-    for col, item in zip(cols, metrics2):
-
-        icon, title, value, unit = item
+    for col, (label, value, unit) in zip(cols, values):
 
         with col:
 
-            value_text = (
-                "—"
-                if value is None
-                else f"{value:.1f}{unit}"
-            )
+            if value is None:
+                display_value = "N/A"
+            else:
+                display_value = f"{value:.1f}"
 
             st.markdown(
                 f"""
                 <div class="metric-card">
 
-                    <div class="metric-icon">
-                        {icon}
-                    </div>
+                <div class="metric-label">
+                {label}
+                </div>
 
-                    <div class="metric-title">
-                        {title}
-                    </div>
+                <div class="metric-value">
+                {display_value}
+                </div>
 
-                    <div class="metric-value">
-                        {value_text}
-                    </div>
-
-                    <div class="live">
-                        ● Live data
-                    </div>
+                <div class="metric-unit">
+                {unit}
+                </div>
 
                 </div>
                 """,
                 unsafe_allow_html=True
             )
 
-    # ========================================================
-    # CHARTS
-    # ========================================================
+    st.write("")
 
-    st.markdown(
-        f"""
-        <div class="section-title">
-            📈 {t["trends"]}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    # AQI chart
 
-    hourly_air = air.get("hourly", {})
+    hourly = air_data.get("hourly", {})
 
-    air_df = pd.DataFrame(hourly_air)
+    if "time" in hourly and "european_aqi" in hourly:
 
-    if not air_df.empty:
+        df = pd.DataFrame({
+            "time": pd.to_datetime(hourly["time"]),
+            "AQI": hourly["european_aqi"]
+        })
 
-        air_df["time"] = pd.to_datetime(
-            air_df["time"]
+        df = df.dropna()
+
+        st.markdown(
+            f"""
+            <div class="card">
+            <h3>📈 {t["trend"]}</h3>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
-        fig = go.Figure()
-
-        if "european_aqi" in air_df:
-
-            fig.add_trace(
-                go.Scatter(
-                    x=air_df["time"],
-                    y=air_df["european_aqi"],
-                    mode="lines",
-                    name="European AQI",
-                    line=dict(width=3)
-                )
-            )
+        fig = px.line(
+            df,
+            x="time",
+            y="AQI",
+            markers=True,
+            title=t["aqi"]
+        )
 
         fig.update_layout(
-            title=t["air_quality"],
             template="plotly_dark",
-            height=400,
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)"
         )
@@ -996,39 +582,172 @@ if page == t["overview"]:
         )
 
 
-    # Weather chart
+# ============================================================
+# AIR QUALITY
+# ============================================================
 
-    hourly_weather = weather.get(
-        "hourly",
-        {}
-    )
+elif page == t["air"]:
 
-    weather_df = pd.DataFrame(
-        hourly_weather
-    )
+    st.subheader("🌫️ " + t["air"])
 
-    if not weather_df.empty:
+    cols = st.columns(4)
 
-        weather_df["time"] = pd.to_datetime(
-            weather_df["time"]
+    air_values = [
+        (t["aqi"], aqi, ""),
+        (t["pm25"], pm25, "µg/m³"),
+        (t["pm10"], pm10, "µg/m³"),
+        (t["no2"], no2, "µg/m³")
+    ]
+
+    for col, (label, value, unit) in zip(cols, air_values):
+
+        with col:
+
+            value_text = (
+                "N/A"
+                if value is None
+                else f"{value:.2f}"
+            )
+
+            st.metric(
+                label,
+                value_text,
+                unit
+            )
+
+    st.write("")
+
+    cols = st.columns(4)
+
+    air_values = [
+        (t["co2"], co2, "µg/m³"),
+        (t["so2"], so2, "µg/m³"),
+        (t["o3"], o3, "µg/m³"),
+        (t["wind"], wind, "km/h")
+    ]
+
+    for col, (label, value, unit) in zip(cols, air_values):
+
+        with col:
+
+            value_text = (
+                "N/A"
+                if value is None
+                else f"{value:.2f}"
+            )
+
+            st.metric(
+                label,
+                value_text,
+                unit
+            )
+
+    st.write("")
+
+    hourly = air_data.get("hourly", {})
+
+    if "time" in hourly:
+
+        df_air = pd.DataFrame({
+            "time": pd.to_datetime(hourly["time"]),
+            "PM2.5": hourly.get("pm2_5"),
+            "PM10": hourly.get("pm10"),
+            "NO2": hourly.get("nitrogen_dioxide"),
+            "SO2": hourly.get("sulphur_dioxide"),
+            "O3": hourly.get("ozone")
+        })
+
+        st.markdown(
+            '<div class="card"><h3>📊 Pollutant evolution</h3></div>',
+            unsafe_allow_html=True
         )
 
-        fig = go.Figure()
+        selected = st.selectbox(
+            t["select"],
+            ["PM2.5", "PM10", "NO2", "SO2", "O3"]
+        )
 
-        fig.add_trace(
-            go.Scatter(
-                x=weather_df["time"],
-                y=weather_df["temperature_2m"],
-                mode="lines",
-                name=t["temperature"],
-                line=dict(width=3)
-            )
+        df_plot = df_air[["time", selected]].dropna()
+
+        fig = px.line(
+            df_plot,
+            x="time",
+            y=selected,
+            markers=True,
+            title=selected
         )
 
         fig.update_layout(
-            title=t["weather"],
             template="plotly_dark",
-            height=380,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)"
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
+
+# ============================================================
+# ANALYTICS
+# ============================================================
+
+elif page == t["analytics"]:
+
+    st.subheader("📊 " + t["analytics"])
+
+    hourly = air_data.get("hourly", {})
+
+    df = pd.DataFrame({
+        "time": pd.to_datetime(hourly.get("time", [])),
+        "AQI": hourly.get("european_aqi", []),
+        "PM2.5": hourly.get("pm2_5", []),
+        "PM10": hourly.get("pm10", []),
+        "CO2": hourly.get("carbon_dioxide", []),
+        "NO2": hourly.get("nitrogen_dioxide", []),
+        "SO2": hourly.get("sulphur_dioxide", []),
+        "O3": hourly.get("ozone", [])
+    })
+
+    variable = st.selectbox(
+        t["select"],
+        ["AQI", "PM2.5", "PM10", "CO2", "NO2", "SO2", "O3"]
+    )
+
+    clean = df[["time", variable]].dropna()
+
+    if len(clean) > 0:
+
+        c1, c2, c3 = st.columns(3)
+
+        with c1:
+            st.metric(
+                t["average"],
+                f"{clean[variable].mean():.2f}"
+            )
+
+        with c2:
+            st.metric(
+                t["maximum"],
+                f"{clean[variable].max():.2f}"
+            )
+
+        with c3:
+            st.metric(
+                t["minimum"],
+                f"{clean[variable].min():.2f}"
+            )
+
+        fig = px.area(
+            clean,
+            x="time",
+            y=variable,
+            title=variable
+        )
+
+        fig.update_layout(
+            template="plotly_dark",
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)"
         )
@@ -1045,481 +764,159 @@ if page == t["overview"]:
 
 elif page == t["map"]:
 
-    st.markdown(
-        f"""
-        <div class="section-title">
-            🗺️ {t["map_title"]}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    st.subheader("🗺️ " + t["map"])
 
-    st.write(
-        t["map_description"]
-    )
-
-    m = folium.Map(
-        location=[
-            LATITUDE,
-            LONGITUDE
-        ],
+    gabes_map = folium.Map(
+        location=[LATITUDE, LONGITUDE],
         zoom_start=12,
         tiles="CartoDB dark_matter"
     )
 
-    # Main center
-
     folium.Marker(
-
-        [
-            LATITUDE,
-            LONGITUDE
-        ],
-
+        [LATITUDE, LONGITUDE],
         tooltip=t["center"],
-
         popup=f"""
-        <b>🌍 EcoSmart Gabès</b><br>
-        {t["location"]}
+        <b>EcoSmart Gabès</b><br>
+        {t["aqi"]}: {aqi if aqi is not None else "N/A"}<br>
+        PM2.5: {pm25 if pm25 is not None else "N/A"}
         """,
-
-        icon=folium.Icon(
-            color="blue",
-            icon="info-sign"
-        )
-
-    ).add_to(m)
-
-    # Industrial zone
-
-    industrial_lat = 33.894
-    industrial_lon = 10.103
-
-    folium.Circle(
-
-        [
-            industrial_lat,
-            industrial_lon
-        ],
-
-        radius=2500,
-
-        color="#ef4444",
-
-        fill=True,
-
-        fill_color="#ef4444",
-
-        fill_opacity=0.20,
-
-        popup=t["industrial"]
-
-    ).add_to(m)
-
-    folium.Marker(
-
-        [
-            industrial_lat,
-            industrial_lon
-        ],
-
-        tooltip=t["industrial"],
-
-        popup=t["industrial"],
-
-        icon=folium.Icon(
-            color="red",
-            icon="warning-sign"
-        )
-
-    ).add_to(m)
-
-    # Coastal zone
-
-    coastal_lat = 33.870
-    coastal_lon = 10.120
-
-    folium.Circle(
-
-        [
-            coastal_lat,
-            coastal_lon
-        ],
-
-        radius=1600,
-
-        color="#22c55e",
-
-        fill=True,
-
-        fill_color="#22c55e",
-
-        fill_opacity=0.18,
-
-        popup=t["coastal"]
-
-    ).add_to(m)
-
-    folium.Marker(
-
-        [
-            coastal_lat,
-            coastal_lon
-        ],
-
-        tooltip=t["coastal"],
-
-        popup=t["coastal"],
-
         icon=folium.Icon(
             color="green",
-            icon="leaf"
+            icon="globe"
         )
+    ).add_to(gabes_map)
 
-    ).add_to(m)
+    # Industrial area
+    folium.CircleMarker(
+        [33.894, 10.103],
+        radius=12,
+        tooltip=t["industrial"],
+        popup=t["industrial"],
+        color="#ff6b35",
+        fill=True,
+        fill_opacity=0.6
+    ).add_to(gabes_map)
+
+    # Coastal area
+    folium.CircleMarker(
+        [33.870, 10.120],
+        radius=10,
+        tooltip=t["coast"],
+        popup=t["coast"],
+        color="#00b4d8",
+        fill=True,
+        fill_opacity=0.6
+    ).add_to(gabes_map)
 
     st_folium(
-        m,
+        gabes_map,
         width=None,
         height=600
     )
 
 
 # ============================================================
-# ANALYTICS
-# ============================================================
-
-elif page == t["analytics"]:
-
-    st.markdown(
-        f"""
-        <div class="section-title">
-            📊 {t["analytics_title"]}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    hourly_air = air.get(
-        "hourly",
-        {}
-    )
-
-    df = pd.DataFrame(
-        hourly_air
-    )
-
-    if not df.empty:
-
-        df["time"] = pd.to_datetime(
-            df["time"]
-        )
-
-        indicators = {
-
-            t["aqi"]: "european_aqi",
-
-            t["pm25"]: "pm2_5",
-
-            t["pm10"]: "pm10",
-
-            t["co2"]: "carbon_dioxide",
-
-            t["no2"]: "nitrogen_dioxide",
-
-            t["so2"]: "sulphur_dioxide",
-
-            t["o3"]: "ozone"
-        }
-
-        available = {
-            name: column
-            for name, column in indicators.items()
-            if column in df.columns
-        }
-
-        selected = st.selectbox(
-            t["choose"],
-            list(available.keys())
-        )
-
-        column = available[selected]
-
-        chart_df = df[
-            [
-                "time",
-                column
-            ]
-        ].dropna()
-
-        fig = go.Figure()
-
-        fig.add_trace(
-            go.Scatter(
-                x=chart_df["time"],
-                y=chart_df[column],
-                mode="lines+markers",
-                name=selected,
-                line=dict(width=3)
-            )
-        )
-
-        fig.update_layout(
-            title=selected,
-            template="plotly_dark",
-            height=450,
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)"
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-        c1, c2, c3 = st.columns(3)
-
-        with c1:
-
-            st.metric(
-                t["average"],
-                f"{chart_df[column].mean():.2f}"
-            )
-
-        with c2:
-
-            st.metric(
-                t["maximum"],
-                f"{chart_df[column].max():.2f}"
-            )
-
-        with c3:
-
-            st.metric(
-                t["minimum"],
-                f"{chart_df[column].min():.2f}"
-            )
-
-        st.dataframe(
-            chart_df,
-            use_container_width=True,
-            hide_index=True
-        )
-
-
-# ============================================================
-# AI PREDICTION
+# PREDICTION
 # ============================================================
 
 elif page == t["prediction"]:
 
-    st.markdown(
-        f"""
-        <div class="section-title">
-            🤖 {t["prediction_title"]}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    st.subheader("🤖 " + t["prediction"])
 
-    st.write(
-        t["prediction_description"]
-    )
+    hourly = air_data.get("hourly", {})
 
-    hourly_air = air.get(
-        "hourly",
-        {}
-    )
+    if (
+        "time" in hourly
+        and "european_aqi" in hourly
+    ):
 
-    df = pd.DataFrame(
-        hourly_air
-    )
+        df = pd.DataFrame({
+            "time": pd.to_datetime(hourly["time"]),
+            "AQI": hourly["european_aqi"]
+        }).dropna()
 
-    if "european_aqi" not in df.columns:
+        recent = df.tail(48).copy()
 
-        st.warning(
-            "AQI prediction data unavailable."
-        )
+        if len(recent) >= 10:
 
-        st.stop()
+            x = np.arange(len(recent))
+            y = recent["AQI"].values
 
-    df["time"] = pd.to_datetime(
-        df["time"]
-    )
-
-    df = df[
-        [
-            "time",
-            "european_aqi"
-        ]
-    ].dropna()
-
-    days = st.slider(
-        t["prediction_days"],
-        min_value=1,
-        max_value=3,
-        value=2
-    )
-
-    # Use recent data
-
-    recent = df.tail(48).copy()
-
-    if len(recent) < 5:
-
-        st.warning(
-            "Not enough data."
-        )
-
-        st.stop()
-
-    x = np.arange(
-        len(recent)
-    )
-
-    y = recent[
-        "european_aqi"
-    ].values
-
-    # Linear trend
-
-    coefficients = np.polyfit(
-        x,
-        y,
-        1
-    )
-
-    model = np.poly1d(
-        coefficients
-    )
-
-    future_hours = days * 24
-
-    future_x = np.arange(
-        len(recent),
-        len(recent) + future_hours
-    )
-
-    prediction = model(
-        future_x
-    )
-
-    prediction = np.clip(
-        prediction,
-        0,
-        None
-    )
-
-    future_dates = pd.date_range(
-
-        start=
-        recent["time"].iloc[-1]
-        + pd.Timedelta(hours=1),
-
-        periods=future_hours,
-
-        freq="h"
-    )
-
-    prediction_df = pd.DataFrame({
-
-        "time": future_dates,
-
-        "predicted_aqi":
-            prediction
-    })
-
-    fig = go.Figure()
-
-    fig.add_trace(
-        go.Scatter(
-            x=recent["time"],
-            y=recent["european_aqi"],
-            mode="lines",
-            name=t["historical"],
-            line=dict(width=3)
-        )
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=prediction_df["time"],
-            y=prediction_df["predicted_aqi"],
-            mode="lines",
-            name=t["forecast"],
-            line=dict(
-                width=3,
-                dash="dash"
+            slope, intercept = np.polyfit(
+                x,
+                y,
+                1
             )
-        )
-    )
 
-    fig.update_layout(
-        title=t["prediction_title"],
-        template="plotly_dark",
-        height=470,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
-    )
+            future_x = np.arange(
+                len(recent),
+                len(recent) + 24
+            )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
+            predicted = (
+                intercept +
+                slope * future_x
+            )
 
-    average_prediction = (
-        prediction_df[
-            "predicted_aqi"
-        ].mean()
-    )
+            predicted = np.maximum(
+                predicted,
+                0
+            )
 
-    if average_prediction <= 20:
+            future_times = pd.date_range(
+                start=recent["time"].iloc[-1],
+                periods=25,
+                freq="h"
+            )[1:]
 
-        st.success(
-            f"🟢 {t['good']} — "
-            f"{average_prediction:.1f}"
-        )
+            prediction_df = pd.DataFrame({
+                "time": future_times,
+                "AQI": predicted
+            })
 
-    elif average_prediction <= 40:
+            combined = pd.concat(
+                [
+                    recent,
+                    prediction_df
+                ],
+                ignore_index=True
+            )
 
-        st.info(
-            f"🟢 {t['fair']} — "
-            f"{average_prediction:.1f}"
-        )
+            combined["Type"] = (
+                ["Historical"] * len(recent)
+                + ["Prediction"] * len(prediction_df)
+            )
 
-    elif average_prediction <= 60:
+            fig = px.line(
+                combined,
+                x="time",
+                y="AQI",
+                color="Type",
+                markers=True,
+                title=t["forecast"]
+            )
 
-        st.warning(
-            f"🟡 {t['moderate']} — "
-            f"{average_prediction:.1f}"
-        )
+            fig.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)"
+            )
 
-    elif average_prediction <= 80:
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
 
-        st.warning(
-            f"🟠 {t['poor']} — "
-            f"{average_prediction:.1f}"
-        )
+            st.info(
+                "ℹ️ This is a simple mathematical trend estimate, "
+                "not an official air-quality forecast."
+            )
 
-    elif average_prediction <= 100:
+        else:
 
-        st.error(
-            f"🔴 {t['very_poor']} — "
-            f"{average_prediction:.1f}"
-        )
-
-    else:
-
-        st.error(
-            f"🚨 {t['extreme']} — "
-            f"{average_prediction:.1f}"
-        )
-
-    st.dataframe(
-        prediction_df,
-        use_container_width=True,
-        hide_index=True
-    )
+            st.warning(
+                "Not enough data for prediction."
+            )
 
 
 # ============================================================
@@ -1528,86 +925,44 @@ elif page == t["prediction"]:
 
 elif page == t["about"]:
 
-    st.markdown(
-        f"""
-        <div class="section-title">
-            🌍 {t["about_title"]}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    st.subheader("🌍 " + t["about"])
 
     st.markdown(
         f"""
-        <div class="info-card">
-            {t["about_text"]}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        <div class="card">
 
-    st.markdown(
-        f"""
-        <div class="section-title">
-            🎯 {t["objectives"]}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        <h2>EcoSmart Gabès</h2>
 
-    objectives = [
+        <p>
+        {t["about_text"]}
+        </p>
 
-        t["objective1"],
-        t["objective2"],
-        t["objective3"],
-        t["objective4"],
-        t["objective5"],
-        t["objective6"]
-    ]
+        <hr>
 
-    cols = st.columns(2)
+        <h3>📡 {t["real_data"]}</h3>
 
-    for i, objective in enumerate(
-        objectives
-    ):
+        <p>
+        Weather and air-quality information is retrieved
+        automatically from Open-Meteo.
+        </p>
 
-        with cols[i % 2]:
+        <h3>⚠️ Important</h3>
 
-            st.markdown(
-                f"""
-                <div class="info-card">
-                    {objective}
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        <p>
+        {t["model_note"]}
+        </p>
 
-    st.markdown(
-        f"""
-        <div class="section-title">
-            🚀 {t["future"]}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        <h3>🤖 Future development</h3>
 
-    st.markdown(
-        f"""
-        <div class="info-card">
-            {t["future_text"]}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        <ul>
+            <li>IoT environmental sensors</li>
+            <li>Machine learning models</li>
+            <li>Satellite data</li>
+            <li>Historical environmental database</li>
+            <li>Automatic pollution alerts</li>
+            <li>AI environmental assistant</li>
+        </ul>
 
-    st.markdown(
-        f"""
-        <div class="section-title">
-            📡 {t["sources"]}
-        </div>
-
-        <div class="source">
-            {t["source_text"]}
         </div>
         """,
         unsafe_allow_html=True
@@ -1622,11 +977,11 @@ st.markdown(
     f"""
     <div class="footer">
 
-        🌍 <b>EcoSmart Gabès</b><br>
+    🌍 <b>EcoSmart Gabès</b><br>
 
-        {t["footer"]}<br><br>
+    Environmental Intelligence • Gabès, Tunisia<br>
 
-        Python • Streamlit • Plotly • Folium • Open-Meteo
+    {t["source"]}: Open-Meteo / CAMS
 
     </div>
     """,
