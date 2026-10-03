@@ -1,6 +1,8 @@
+```txt
 streamlit
 pandas
 numpy
 plotly
 folium
 streamlit-folium
+```
